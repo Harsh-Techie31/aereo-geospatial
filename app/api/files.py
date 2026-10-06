@@ -1,4 +1,7 @@
+import json
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -44,6 +47,39 @@ def get_features(
     total = db.scalar(select(func.count()).select_from(Feature).where(Feature.file_id == file_id))
     rows = db.scalars(q.limit(limit).offset(offset)).all()
     return {"file_id": file_id, "total": total, "limit": limit, "offset": offset, "features": rows}
+
+
+@router.get("/{file_id}/geojson/")
+def get_geojson(file_id: str, db: Session = Depends(get_db)):
+    """Download all features as a GeoJSON FeatureCollection with measurements in properties."""
+    record = _get_file_or_404(db, file_id)
+    rows = db.scalars(
+        select(Feature).where(Feature.file_id == file_id).order_by(Feature.index)
+    ).all()
+
+    features = []
+    for r in rows:
+        props = {**(r.properties or {})}
+        props["_index"] = r.index
+        props["_layer"] = r.layer
+        props["_geometry_type"] = r.geometry_type
+        props["_location"] = r.location
+        props["_area_m2"] = r.area_m2
+        props["_perimeter_m"] = r.perimeter_m
+        props["_length_m"] = r.length_m
+        props["_projected_crs"] = r.projected_crs
+        props["_warning"] = r.warning
+        features.append({"type": "Feature", "geometry": r.geometry, "properties": props})
+
+    collection = {"type": "FeatureCollection", "features": features}
+    if record.bbox:
+        collection["bbox"] = record.bbox
+
+    return Response(
+        content=json.dumps(collection),
+        media_type="application/geo+json",
+        headers={"Content-Disposition": f'attachment; filename="{record.filename}.geojson"'},
+    )
 
 
 @router.get("/{file_id}/measurements/", response_model=schemas.MeasurementsResponse)

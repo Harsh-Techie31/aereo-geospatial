@@ -465,13 +465,16 @@
 
     if (data.status === 'COMPLETED') {
       container.innerHTML += `
-        <div style="display:flex;gap:8px;margin-top:12px">
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-ghost" onclick="loadFeatures('${data.id}', '${containerId}-feat', 0)">
             View Features
           </button>
           <button class="btn btn-ghost" onclick="loadMeasurements('${data.id}', '${containerId}-meas', 0)">
             View Measurements
           </button>
+          <a class="btn btn-ghost" href="${baseURL()}/api/files/${data.id}/geojson/" download style="text-decoration:none">
+            ⬇ Download GeoJSON
+          </a>
         </div>
         <div id="${containerId}-feat" style="margin-top:12px"></div>
         <div id="${containerId}-meas" style="margin-top:12px"></div>`;
