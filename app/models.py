@@ -44,6 +44,8 @@ class Feature(Base):
     crs: Mapped[str | None] = mapped_column(String(64), nullable=True)
     properties: Mapped[dict] = mapped_column(JSON, default=dict)
 
+    location: Mapped[str | None] = mapped_column(Text, nullable=True)  # reverse-geocoded label
+
     # measurement results
     measurement_supported: Mapped[bool] = mapped_column(default=False)
     area_m2: Mapped[float | None] = mapped_column(Float, nullable=True)

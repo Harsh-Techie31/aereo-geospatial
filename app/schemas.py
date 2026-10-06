@@ -26,6 +26,7 @@ class FeatureOut(BaseModel):
     geometry: dict[str, Any] | None
     crs: str | None
     properties: dict[str, Any]
+    location: str | None = None
 
 
 class MeasurementOut(BaseModel):

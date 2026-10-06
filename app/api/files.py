@@ -18,9 +18,13 @@ def _get_file_or_404(db: Session, file_id: str) -> UploadedFile:
 
 
 @router.post("/", response_model=schemas.FileOut, status_code=201)
-def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
+def upload_file(
+    file: UploadFile = File(...),
+    geocode: bool = Query(False, description="Reverse-geocode each feature (slower, ~1 s per feature)"),
+    db: Session = Depends(get_db),
+):
     """Upload a .kml or a .zip containing a Shapefile; processed synchronously."""
-    return process_upload(db, file)
+    return process_upload(db, file, geocode=geocode)
 
 
 @router.get("/{file_id}/", response_model=schemas.FileOut)

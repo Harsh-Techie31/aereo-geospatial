@@ -11,6 +11,7 @@ from app.config import MAX_UPLOAD_BYTES
 from app.errors import FileTooLargeError, GeoFileError
 from app.models import Feature, UploadedFile
 from app.services.crs import crs_label
+from app.services.geocode import geocode_feature
 from app.services.measure import measure_geometry
 from app.services.reader import detect_type, parse_file
 
@@ -29,7 +30,7 @@ def _save_upload(upload: UploadFile, dest: Path) -> None:
         raise GeoFileError("Uploaded file is empty")
 
 
-def process_upload(db: Session, upload: UploadFile) -> UploadedFile:
+def process_upload(db: Session, upload: UploadFile, geocode: bool = False) -> UploadedFile:
     filename = Path(upload.filename or "upload").name
     file_type = detect_type(filename)  # raises 415 before anything is stored
 
@@ -47,6 +48,7 @@ def process_upload(db: Session, upload: UploadFile) -> UploadedFile:
         for f in parsed.features:
             m = measure_geometry(f.geometry, f.crs)
             has_geom = f.geometry is not None and not f.geometry.is_empty
+            location = geocode_feature(f.geometry, f.crs) if (geocode and has_geom) else None
             rows.append(
                 Feature(
                     file_id=record.id,
@@ -56,6 +58,7 @@ def process_upload(db: Session, upload: UploadFile) -> UploadedFile:
                     geometry=_to_geojson(f.geometry) if has_geom else None,
                     crs=crs_label(f.crs),
                     properties=f.properties,
+                    location=location,
                     measurement_supported=m.supported,
                     area_m2=m.area_m2,
                     perimeter_m=m.perimeter_m,
