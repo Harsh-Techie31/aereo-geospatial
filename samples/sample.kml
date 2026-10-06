@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Folder><name>sample</name>
+  <Placemark id="sample.1">
+	<name>Plot A</name>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>85.1,25.6 85.2,25.6 85.2,25.7 85.1,25.7 85.1,25.6</coordinates></LinearRing></outerBoundaryIs></Polygon>
+  </Placemark>
+  <Placemark id="sample.2">
+	<name>Road B</name>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+      <LineString><coordinates>85.1,25.6 85.2,25.7 85.3,25.7</coordinates></LineString>
+  </Placemark>
+  <Placemark id="sample.3">
+	<name>Well C</name>
+      <Point><coordinates>85.15,25.65</coordinates></Point>
+  </Placemark>
+</Folder>
+</Document></kml>

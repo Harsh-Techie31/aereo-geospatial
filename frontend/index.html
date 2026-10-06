@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Geo Measure API</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3a;
+      --accent: #5b7cf5;
+      --accent-dim: #3a4fa0;
+      --text: #e2e4ed;
+      --text-dim: #7a7e91;
+      --success: #3ecf8e;
+      --warn: #f5a623;
+      --error: #e05c5c;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+    h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    small { color: var(--text-dim); font-size: 12px; }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .icon { font-size: 24px; }
+
+    /* Base URL bar */
+    .base-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      align-items: center;
+    }
+    .base-bar label { color: var(--text-dim); white-space: nowrap; font-size: 12px; }
+    .base-bar input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+    .base-bar input:focus { border-color: var(--accent); }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 20px;
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 4px;
+      width: fit-content;
+    }
+    .tab {
+      padding: 7px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-dim);
+      border: none;
+      background: none;
+      transition: all 0.15s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { background: var(--accent); color: #fff; }
+
+    /* Panel */
+    .panel {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .panel.active { display: block; }
+
+    /* Drop zone */
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    #drop-zone:hover, #drop-zone.over {
+      border-color: var(--accent);
+      background: rgba(91,124,245,0.06);
+    }
+    #drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    #drop-zone p { color: var(--text-dim); margin-top: 8px; font-size: 13px; }
+    #drop-zone strong { display: block; font-size: 15px; color: var(--text); }
+    #file-name { color: var(--accent); font-weight: 500; margin-top: 8px; display: block; }
+
+    /* Buttons */
+    .btn {
+      padding: 9px 20px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-dim); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
+
+    /* Input row */
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .input-row input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      font-family: var(--mono);
+    }
+    .input-row input:focus { border-color: var(--accent); }
+
+    /* Result box */
+    .result {
+      margin-top: 20px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .result-header {
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .result-header.ok { background: rgba(62,207,142,0.15); color: var(--success); }
+    .result-header.err { background: rgba(224,92,92,0.15); color: var(--error); }
+    .result-header.info { background: rgba(91,124,245,0.15); color: var(--accent); }
+    .result pre {
+      background: #0a0c13;
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 12px;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: var(--text);
+      max-height: 480px;
+      overflow-y: auto;
+    }
+
+    /* Status badge */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-ok { background: rgba(62,207,142,0.2); color: var(--success); }
+    .badge-err { background: rgba(224,92,92,0.2); color: var(--error); }
+    .badge-warn { background: rgba(245,166,35,0.2); color: var(--warn); }
+
+    /* Cards */
+    .cards { display: grid; gap: 10px; margin-top: 16px; }
+    .card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .card-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+    .kv {
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border-radius: 5px;
+      padding: 8px 12px;
+      min-width: 100px;
+    }
+    .kv span:first-child { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+    .kv span:last-child { font-size: 13px; font-weight: 600; margin-top: 2px; }
+
+    /* Summary bar */
+    .summary-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+    .summary-bar .kv { background: var(--bg); border: 1px solid var(--border); }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 14px;
+    }
+    .pagination span { color: var(--text-dim); font-size: 12px; }
+    .page-info { flex: 1; text-align: center; color: var(--text-dim); font-size: 12px; }
+
+    /* Recent uploads list */
+    .recent-list { margin-top: 16px; }
+    .recent-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .recent-item:hover { background: var(--bg); }
+    .recent-item .fi { font-family: var(--mono); font-size: 11px; color: var(--text-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .recent-item .fid { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+
+    .empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 30px; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+    .copy-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .copy-btn:hover { color: var(--text); background: var(--border); }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="icon">🌍</span>
+  <div>
+    <h1>Geo Measure API</h1>
+    <small>Upload & inspect geospatial files</small>
+  </div>
+</header>
+
+<div class="base-bar">
+  <label>API base URL</label>
+  <input id="base-url" type="text" value="http://localhost:8000" placeholder="https://your-api.fly.dev" />
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('upload')">Upload</button>
+  <button class="tab" onclick="switchTab('lookup')">Lookup by ID</button>
+  <button class="tab" onclick="switchTab('recent')">Recent</button>
+</div>
+
+<!-- UPLOAD TAB -->
+<div id="tab-upload" class="panel active">
+  <h2>Upload a file</h2>
+  <small>Accepts a .kml file or a .zip containing a Shapefile</small>
+  <br/><br/>
+
+  <div id="drop-zone">
+    <input type="file" id="file-input" accept=".kml,.zip" />
+    <span style="font-size:28px">📂</span>
+    <strong>Drop a .kml or .zip here</strong>
+    <p>or click to browse</p>
+    <span id="file-name"></span>
+  </div>
+
+  <button class="btn btn-primary" id="upload-btn" onclick="uploadFile()" disabled>
+    Upload &amp; Process
+  </button>
+
+  <div id="upload-result"></div>
+</div>
+
+<!-- LOOKUP TAB -->
+<div id="tab-lookup" class="panel">
+  <h2>Lookup by file ID</h2>
+
+  <div class="input-row">
+    <input id="lookup-id" type="text" placeholder="Paste a file ID (e.g. d0e761f38ca44c15a99959c1b016800d)" />
+    <button class="btn btn-primary" onclick="lookupFile()">Fetch</button>
+  </div>
+
+  <div id="lookup-result"></div>
+</div>
+
+<!-- RECENT TAB -->
+<div id="tab-recent" class="panel">
+  <h2>Recent uploads</h2>
+  <small>Stored in this browser — click any row to open it</small>
+  <div id="recent-list" class="recent-list"></div>
+  <button class="btn btn-ghost" style="margin-top:14px;font-size:12px" onclick="clearRecent()">Clear history</button>
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────────────────
+  let selectedFile = null;
+  const RECENT_KEY = 'geo_api_recent';
+
+  function baseURL() {
+    return document.getElementById('base-url').value.replace(/\/$/, '');
+  }
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', ['upload','lookup','recent'][i] === name);
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    if (name === 'recent') renderRecent();
+  }
+
+  // ── File picker / drop zone ───────────────────────────────────────────────
+  const dz = document.getElementById('drop-zone');
+  const fi = document.getElementById('file-input');
+  const fn = document.getElementById('file-name');
+  const ub = document.getElementById('upload-btn');
+
+  fi.addEventListener('change', () => {
+    selectedFile = fi.files[0] || null;
+    fn.textContent = selectedFile ? selectedFile.name : '';
+    ub.disabled = !selectedFile;
+  });
+
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('over');
+    const f = e.dataTransfer.files[0];
+    if (f && (f.name.endsWith('.kml') || f.name.endsWith('.zip'))) {
+      selectedFile = f;
+      fn.textContent = f.name;
+      ub.disabled = false;
+    } else {
+      showResult('upload-result', 'err', 'Only .kml or .zip files are accepted.');
+    }
+  });
+
+  // ── Upload ────────────────────────────────────────────────────────────────
+  async function uploadFile() {
+    if (!selectedFile) return;
+    ub.disabled = true;
+    ub.innerHTML = '<span class="spinner"></span>Processing…';
+    document.getElementById('upload-result').innerHTML = '';
+
+    const fd = new FormData();
+    fd.append('file', selectedFile);
+
+    try {
+      const res = await fetch(baseURL() + '/api/files/', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) {
+        showResult('upload-result', 'err', data.detail || JSON.stringify(data, null, 2));
+      } else {
+        saveRecent({ id: data.id, filename: data.filename, status: data.status });
+        renderFileCard('upload-result', data);
+      }
+    } catch (e) {
+      showResult('upload-result', 'err', 'Could not reach the API.\n' + e.message);
+    } finally {
+      ub.disabled = false;
+      ub.textContent = 'Upload & Process';
+    }
+  }
+
+  // ── Lookup ────────────────────────────────────────────────────────────────
+  async function lookupFile(id) {
+    const fid = id || document.getElementById('lookup-id').value.trim();
+    if (!fid) return;
+    document.getElementById('lookup-result').innerHTML = '<div style="color:var(--text-dim);padding:10px">Loading…</div>';
+    try {
+      const res = await fetch(baseURL() + `/api/files/${fid}/`);
+      const data = await res.json();
+      if (!res.ok) {
+        showResult('lookup-result', 'err', data.detail || JSON.stringify(data, null, 2));
+      } else {
+        renderFileCard('lookup-result', data);
+      }
+    } catch (e) {
+      showResult('lookup-result', 'err', 'Could not reach the API.\n' + e.message);
+    }
+  }
+
+  // ── File card (info + sub-requests for features & measurements) ───────────
+  function renderFileCard(containerId, data) {
+    const container = document.getElementById(containerId);
+    const statusClass = data.status === 'COMPLETED' ? 'badge-ok' : data.status === 'FAILED' ? 'badge-err' : 'badge-warn';
+
+    container.innerHTML = `
+      <div class="result">
+        <div class="result-header ok">
+          FILE INFO
+          <button class="copy-btn" onclick="copyJSON(this, ${JSON.stringify(JSON.stringify(data))})">copy JSON</button>
+        </div>
+        <div class="cards" style="padding:14px;background:#0a0c13">
+          <div class="card-row">
+            ${kv('ID', `<span style="font-family:var(--mono);font-size:11px">${data.id}</span>`)}
+            ${kv('Filename', data.filename)}
+            ${kv('Type', data.file_type?.toUpperCase() || '—')}
+            ${kv('CRS', data.crs || '—')}
+            ${kv('Features', data.feature_count ?? '—')}
+            ${kv('Status', `<span class="badge ${statusClass}">${data.status}</span>`)}
+          </div>
+          ${data.error ? `<div style="color:var(--error);font-size:12px;padding:4px 2px">Error: ${data.error}</div>` : ''}
+        </div>
+      </div>`;
+
+    if (data.status === 'COMPLETED') {
+      container.innerHTML += `
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-ghost" onclick="loadFeatures('${data.id}', '${containerId}-feat', 0)">
+            View Features
+          </button>
+          <button class="btn btn-ghost" onclick="loadMeasurements('${data.id}', '${containerId}-meas', 0)">
+            View Measurements
+          </button>
+        </div>
+        <div id="${containerId}-feat" style="margin-top:12px"></div>
+        <div id="${containerId}-meas" style="margin-top:12px"></div>`;
+    }
+  }
+
+  // ── Features ──────────────────────────────────────────────────────────────
+  async function loadFeatures(fileId, targetId, offset) {
+    const el = document.getElementById(targetId);
+    el.innerHTML = '<div style="color:var(--text-dim);padding:10px">Loading features…</div>';
+    const limit = 10;
+    try {
+      const res = await fetch(baseURL() + `/api/files/${fileId}/features/?limit=${limit}&offset=${offset}`);
+      const data = await res.json();
+      if (!res.ok) { el.innerHTML = errBox(data.detail); return; }
+
+      let html = `<div class="result">
+        <div class="result-header info">
+          FEATURES &nbsp;<span style="font-weight:400;opacity:0.7">${data.total} total</span>
+          <button class="copy-btn" onclick="copyJSON(this, ${JSON.stringify(JSON.stringify(data))})">copy JSON</button>
+        </div>
+        <div style="padding:14px;background:#0a0c13">
+          <div class="cards">`;
+
+      for (const f of data.features) {
+        const props = Object.keys(f.properties || {}).length;
+        html += `<div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong style="font-size:13px">#${f.index} — ${f.geometry_type}</strong>
+            <span class="badge badge-ok">${f.layer}</span>
+          </div>
+          <div class="card-row" style="margin-top:10px">
+            ${kv('CRS', f.crs)}
+            ${kv('Properties', props + ' fields')}
+            ${kv('Has geometry', f.geometry ? '✓' : '✗')}
+          </div>
+          ${props > 0 ? `<details style="margin-top:8px"><summary style="font-size:12px;color:var(--text-dim);cursor:pointer">Properties</summary>
+            <pre style="font-size:11px;margin-top:6px;background:var(--surface);padding:8px;border-radius:4px;overflow-x:auto">${JSON.stringify(f.properties, null, 2)}</pre></details>` : ''}
+          <details style="margin-top:6px"><summary style="font-size:12px;color:var(--text-dim);cursor:pointer">Geometry (GeoJSON)</summary>
+            <pre style="font-size:11px;margin-top:6px;background:var(--surface);padding:8px;border-radius:4px;overflow-x:auto">${JSON.stringify(f.geometry, null, 2)}</pre></details>
+        </div>`;
+      }
+
+      html += `</div></div></div>`;
+      el.innerHTML = html;
+
+      // pagination
+      const totalPages = Math.ceil(data.total / limit);
+      const currentPage = Math.floor(offset / limit) + 1;
+      if (totalPages > 1) {
+        let pag = `<div class="pagination">
+          <button class="btn btn-ghost" ${offset === 0 ? 'disabled' : ''} onclick="loadFeatures('${fileId}','${targetId}',${offset-limit})">← Prev</button>
+          <span class="page-info">Page ${currentPage} of ${totalPages}</span>
+          <button class="btn btn-ghost" ${offset + limit >= data.total ? 'disabled' : ''} onclick="loadFeatures('${fileId}','${targetId}',${offset+limit})">Next →</button>
+        </div>`;
+        el.innerHTML += pag;
+      }
+    } catch (e) {
+      el.innerHTML = errBox(e.message);
+    }
+  }
+
+  // ── Measurements ──────────────────────────────────────────────────────────
+  async function loadMeasurements(fileId, targetId, offset) {
+    const el = document.getElementById(targetId);
+    el.innerHTML = '<div style="color:var(--text-dim);padding:10px">Loading measurements…</div>';
+    const limit = 10;
+    try {
+      const res = await fetch(baseURL() + `/api/files/${fileId}/measurements/?limit=${limit}&offset=${offset}`);
+      const data = await res.json();
+      if (!res.ok) { el.innerHTML = errBox(data.detail); return; }
+
+      const s = data.summary;
+      let html = `<div class="result">
+        <div class="result-header info">
+          MEASUREMENTS &nbsp;<span style="font-weight:400;opacity:0.7">${data.total} total</span>
+          <button class="copy-btn" onclick="copyJSON(this, ${JSON.stringify(JSON.stringify(data))})">copy JSON</button>
+        </div>
+        <div style="padding:14px;background:#0a0c13">
+          <div class="summary-bar">
+            ${kv('Measurable', s.measurable_features)}
+            ${kv('Unmeasurable', s.unmeasurable_features)}
+            ${kv('Total area', fmt_area(s.total_area_m2))}
+            ${kv('Total length', fmt_len(s.total_length_m))}
+          </div>
+          <div class="cards">`;
+
+      for (const m of data.measurements) {
+        const supported = m.measurement_supported;
+        html += `<div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong style="font-size:13px">#${m.feature_index} — ${m.geometry_type}</strong>
+            <span class="badge ${supported ? 'badge-ok' : 'badge-warn'}">${supported ? 'measured' : 'skipped'}</span>
+          </div>
+          ${m.warning ? `<div style="color:var(--warn);font-size:11px;margin-top:6px">⚠ ${m.warning}</div>` : ''}
+          <div class="card-row" style="margin-top:10px">
+            ${m.area_m2 != null ? kv('Area', fmt_area(m.area_m2)) : ''}
+            ${m.perimeter_m != null ? kv('Perimeter', fmt_len(m.perimeter_m)) : ''}
+            ${m.length_m != null ? kv('Length', fmt_len(m.length_m)) : ''}
+            ${m.projected_crs ? kv('Proj. CRS', m.projected_crs) : ''}
+          </div>
+        </div>`;
+      }
+
+      html += `</div></div></div>`;
+      el.innerHTML = html;
+
+      const totalPages = Math.ceil(data.total / limit);
+      const currentPage = Math.floor(offset / limit) + 1;
+      if (totalPages > 1) {
+        let pag = `<div class="pagination">
+          <button class="btn btn-ghost" ${offset === 0 ? 'disabled' : ''} onclick="loadMeasurements('${fileId}','${targetId}',${offset-limit})">← Prev</button>
+          <span class="page-info">Page ${currentPage} of ${totalPages}</span>
+          <button class="btn btn-ghost" ${offset + limit >= data.total ? 'disabled' : ''} onclick="loadMeasurements('${fileId}','${targetId}',${offset+limit})">Next →</button>
+        </div>`;
+        el.innerHTML += pag;
+      }
+    } catch (e) {
+      el.innerHTML = errBox(e.message);
+    }
+  }
+
+  // ── Recent ────────────────────────────────────────────────────────────────
+  function getRecent() {
+    try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { return []; }
+  }
+  function saveRecent(entry) {
+    const list = getRecent().filter(r => r.id !== entry.id);
+    list.unshift(entry);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 20)));
+  }
+  function clearRecent() {
+    localStorage.removeItem(RECENT_KEY);
+    renderRecent();
+  }
+  function renderRecent() {
+    const list = getRecent();
+    const el = document.getElementById('recent-list');
+    if (!list.length) {
+      el.innerHTML = '<div class="empty">No uploads yet in this browser</div>';
+      return;
+    }
+    el.innerHTML = list.map(r => `
+      <div class="recent-item" onclick="openRecent('${r.id}')">
+        <span style="font-size:18px">${r.filename?.endsWith('.kml') ? '📍' : '📦'}</span>
+        <span class="fi">${r.filename || '—'}</span>
+        <span class="fid">${r.id.slice(0, 12)}…</span>
+        <span class="badge ${r.status === 'COMPLETED' ? 'badge-ok' : 'badge-err'}">${r.status}</span>
+      </div>`).join('');
+  }
+  function openRecent(id) {
+    document.getElementById('lookup-id').value = id;
+    switchTab('lookup');
+    lookupFile(id);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function kv(label, value) {
+    return `<div class="kv"><span>${label}</span><span>${value ?? '—'}</span></div>`;
+  }
+  function showResult(id, type, msg) {
+    document.getElementById(id).innerHTML = `
+      <div class="result">
+        <div class="result-header ${type === 'err' ? 'err' : 'info'}">${type === 'err' ? 'ERROR' : 'INFO'}</div>
+        <pre>${escapeHtml(msg)}</pre>
+      </div>`;
+  }
+  function errBox(msg) {
+    return `<div class="result"><div class="result-header err">ERROR</div><pre>${escapeHtml(String(msg))}</pre></div>`;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function fmt_area(m2) {
+    if (!m2) return '—';
+    if (m2 >= 1e6) return (m2/1e6).toFixed(4) + ' km²';
+    return m2.toFixed(2) + ' m²';
+  }
+  function fmt_len(m) {
+    if (!m) return '—';
+    if (m >= 1000) return (m/1000).toFixed(3) + ' km';
+    return m.toFixed(2) + ' m';
+  }
+  function copyJSON(btn, raw) {
+    navigator.clipboard.writeText(JSON.parse(raw)).then(() => {
+      btn.textContent = 'copied!';
+      setTimeout(() => btn.textContent = 'copy JSON', 1500);
+    });
+  }
+</script>
+</body>
+</html>
