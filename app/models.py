@@ -25,6 +25,7 @@ class UploadedFile(Base):
     crs: Mapped[str | None] = mapped_column(String(64), nullable=True)
     feature_count: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bbox: Mapped[list | None] = mapped_column(JSON, nullable=True)  # [min_lon, min_lat, max_lon, max_lat]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     features: Mapped[list["Feature"]] = relationship(

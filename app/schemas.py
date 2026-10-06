@@ -14,6 +14,7 @@ class FileOut(BaseModel):
     crs: str | None
     status: str
     error: str | None = None
+    bbox: list[float] | None = None
     created_at: datetime
 
 

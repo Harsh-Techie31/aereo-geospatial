@@ -5,6 +5,8 @@ from pathlib import Path
 
 import shapely
 from fastapi import UploadFile
+from shapely.geometry import shape
+from shapely.ops import unary_union
 from sqlalchemy.orm import Session
 
 from app.config import MAX_UPLOAD_BYTES
@@ -70,6 +72,7 @@ def process_upload(db: Session, upload: UploadFile, geocode: bool = False) -> Up
         db.add_all(rows)
         record.crs = parsed.crs_label
         record.feature_count = len(rows)
+        record.bbox = _compute_bbox(rows)
         record.status = "COMPLETED"
         db.commit()
     except GeoFileError as exc:
@@ -90,3 +93,11 @@ def process_upload(db: Session, upload: UploadFile, geocode: bool = False) -> Up
 
 def _to_geojson(geom) -> dict:
     return json.loads(shapely.to_geojson(geom))
+
+
+def _compute_bbox(rows: list) -> list | None:
+    geoms = [shape(r.geometry) for r in rows if r.geometry]
+    if not geoms:
+        return None
+    minx, miny, maxx, maxy = unary_union(geoms).bounds
+    return [round(minx, 6), round(miny, 6), round(maxx, 6), round(maxy, 6)]
