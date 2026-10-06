@@ -481,6 +481,8 @@
   // ── Features ──────────────────────────────────────────────────────────────
   async function loadFeatures(fileId, targetId, offset) {
     const el = document.getElementById(targetId);
+    const measId = targetId.replace('-feat', '-meas');
+    document.getElementById(measId).innerHTML = '';
     el.innerHTML = '<div style="color:var(--text-dim);padding:10px">Loading features…</div>';
     const limit = 10;
     try {
@@ -537,6 +539,8 @@
   // ── Measurements ──────────────────────────────────────────────────────────
   async function loadMeasurements(fileId, targetId, offset) {
     const el = document.getElementById(targetId);
+    const featId = targetId.replace('-meas', '-feat');
+    document.getElementById(featId).innerHTML = '';
     el.innerHTML = '<div style="color:var(--text-dim);padding:10px">Loading measurements…</div>';
     const limit = 10;
     try {
